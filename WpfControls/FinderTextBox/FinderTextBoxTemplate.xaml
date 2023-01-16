@@ -1,0 +1,26 @@
+<UserControl x:Class="BaseObjectsMVVM.WpfControls.FinderTextBox"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:wpfControls="clr-namespace:BaseObjectsMVVM.WpfControls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable ="d">
+    
+    <StackPanel
+                 MinHeight="20" MinWidth="120" 
+                Orientation="Vertical" >
+        <TextBox Text="{Binding Path=Text, Delay=700, UpdateSourceTrigger=PropertyChanged, RelativeSource={RelativeSource AncestorType={x:Type wpfControls:FinderTextBox}}}"/>
+        <Popup HorizontalAlignment="Stretch" IsOpen="{Binding IsOpen, RelativeSource={RelativeSource AncestorType={x:Type wpfControls:FinderTextBox}}}">
+            <ListBox HorizontalAlignment="Stretch"
+                     SelectedItem="{Binding SelectedItemm, RelativeSource={RelativeSource AncestorType={x:Type wpfControls:FinderTextBox}}}"
+                     ItemsSource="{Binding ItemsSourceFiltred, RelativeSource={RelativeSource AncestorType={x:Type wpfControls:FinderTextBox}}}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="wpfControls:ICanUseFinderTextBox">
+                        <TextBlock Text="{Binding DescrForFind}"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Popup>
+    </StackPanel>
+
+</UserControl>
