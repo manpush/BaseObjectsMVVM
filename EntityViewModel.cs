@@ -6,19 +6,38 @@ using projectControl;
 
 namespace BaseObjectsMVVM
 {
-    public abstract class  EntityViewModel<T, TSql> : BaseViewModel 
-        where TSql:ModelSql<T>, new() 
-        where T : EntityModel, new()
+    /// <summary>
+    /// Класс описывающий ViewModel сущности
+    /// </summary>
+    /// <typeparam name="EM">Model</typeparam>
+    /// <typeparam name="TSql">ModelSql</typeparam>
+    public abstract class  EntityViewModel<EM, TSql> : BaseViewModel 
+        where TSql:ModelSql<EM>, new() 
+        where EM : EntityModel, new()
     {
-        public EntityViewModel()
+        #region Constructors
+        /// <summary>
+        /// Конструктор без аргументов (иначе ошибка CS0310)
+        /// </summary>
+        public EntityViewModel(){}
+        /// <summary>
+        /// конструктор создания VM "из данных"
+        /// </summary>
+        public EntityViewModel(DataRow row)
         {
-            _item = new T();
+            Item = new EM();
+            ParseArguments(row);
         }
+        /// <summary>
+        /// конструктор для создания vm по id и с присвоением статуса
+        /// </summary>
+        /// <param name="itemId"></param>
+        /// <param name="status"></param>
         public EntityViewModel(int? itemId, SaveStatuses status)
         {
             if (itemId != null)
             {
-                _item = new T();
+                _item = new EM();
                 var TSql = new TSql();
                 var adapter = TSql.LoadItem((int)itemId);
                 DataTable data = new DataTable();
@@ -31,7 +50,7 @@ namespace BaseObjectsMVVM
             }
             else
             {
-                _item = new T();
+                _item = new EM();
             }
 
             switch (status)
@@ -44,7 +63,9 @@ namespace BaseObjectsMVVM
                     break;
             }
         }
-        public T Item {
+        #endregion
+        
+        public EM Item {
             get => _item;
             set
             {
@@ -52,7 +73,7 @@ namespace BaseObjectsMVVM
                 OnPropertyChanged(()=>Item);
             }
         }
-        private T _item;
+        private EM _item;
 
         private RelayCommand _saveItemCommand;
         public RelayCommand SaveItemCommand => _saveItemCommand ?? (_saveItemCommand = new RelayCommand( obj => SaveItem(), _=>CanSave));
@@ -69,7 +90,7 @@ namespace BaseObjectsMVVM
             base.MarkAsChanged();
             OnPropertyChanged(()=>SaveItemCommand);
         }
-        public virtual void MarkAsUnchanged()
+        public override void MarkAsUnchanged()
         {
             base.MarkAsUnchanged();
             OnPropertyChanged(()=>SaveItemCommand);

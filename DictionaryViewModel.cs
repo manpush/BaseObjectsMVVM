@@ -10,24 +10,44 @@ using projectControl;
 
 namespace BaseObjectsMVVM
 {
+    /// <summary>
+    /// класс описывающий работу со списком моделей
+    /// </summary>
+    /// <typeparam name="EVM">ViewModel</typeparam>
+    /// <typeparam name="EM">Model</typeparam>
+    /// <typeparam name="MSql">ModelSql</typeparam>
     public abstract class DictionaryViewModel<EVM, EM, MSql> : BaseViewModel
         where EM : EntityModel, new()
         where EVM : EntityViewModel<EM, MSql>, new()
         where MSql : ModelSql<EM>, new()
 
     {
+        /// <summary>
+        /// конструктор с указанием родителя
+        /// </summary>
+        /// <param name="parent">ViewModel страницы на которой будет отображаться список</param>
         public DictionaryViewModel(WorkspaceViewModel parent)
         {
             Parent = parent;
         }
 
-        public DictionaryViewModel()
-        {
-        }
+        #region Properties
 
+        #region Parent
+
+        /// <summary>
+        /// ViewModel страницы на которой будет отображаться список
+        /// </summary>
         public WorkspaceViewModel Parent { get; set; }
-        private ObservableCollection<EVM> _items;
 
+        #endregion
+        #region Items
+
+        private ObservableCollection<EVM> _items;
+        /// <summary>
+        /// Коллекция для биндинка к DataGrid.
+        /// Коллекция ViewModel-ей для отображения
+        /// </summary>
         public ObservableCollection<EVM> Items
         {
             get => _items ?? (_items = new ObservableCollection<EVM>());
@@ -38,8 +58,14 @@ namespace BaseObjectsMVVM
             }
         }
 
-        private EVM _selectedItem;
+        #endregion
 
+        #region SelectedItem
+
+        private EVM _selectedItem;
+        /// <summary>
+        /// Возвращает выделенный элемент коллекции
+        /// </summary>
         public EVM SelectedItem
         {
             get => _selectedItem;
@@ -49,6 +75,42 @@ namespace BaseObjectsMVVM
                 OnPropertyChanged(() => SelectedItem);
             }
         }
+        
+        #endregion
+
+        #region SelectedItemIndeex
+        /// <summary>
+        /// Возвращает индекс выделенного элемента коллекции
+        /// </summary>
+        public int? SelectedItemIndex
+        {
+            get => Items.IndexOf(SelectedItem);
+            set
+            {
+                if (Items.Count > value && value != -1)
+                    SelectedItem = Items[(int) value];
+                OnPropertyChanged(() => SelectedItem);
+                OnPropertyChanged(() => SelectedItemIndex);
+            }
+        }
+
+        #endregion
+
+        #region CanSave
+        /// <summary>
+        /// Атрибут отражающий возможность выполнения команды сохранить
+        /// true в случае когда хоть у одного элемента в списке CanSave==true
+        /// </summary>
+        public override bool CanSave
+        {
+            get { return Items.FirstOrDefault(i => i.CanSave) != null; }
+        }
+
+        #endregion
+        
+        #endregion
+
+        #region Methods
         
         /// <summary>
         /// Выделяет элемент в интерфейсе.
@@ -62,19 +124,10 @@ namespace BaseObjectsMVVM
             ICollectionView view = CollectionViewSource.GetDefaultView(Items);
             view?.MoveCurrentTo(itemVm);
         }
-
-        public int? SelectedItemIndex
-        {
-            get => Items.IndexOf(SelectedItem);
-            set
-            {
-                if (Items.Count > value && value != -1)
-                    SelectedItem = Items[(int) value];
-                OnPropertyChanged(() => SelectedItem);
-                OnPropertyChanged(() => SelectedItemIndex);
-            }
-        }
-
+        /// <summary>
+        /// редактирование элемента. Обычно перегружается поумолчанию
+        /// </summary>
+        /// <param name="item"></param>
         public virtual void EditItem(EVM item)
         {
             EditItem();
@@ -85,79 +138,95 @@ namespace BaseObjectsMVVM
             MessageBox.Show("Нет реализации редактирования элемента");
         }
 
-        public virtual void LoadItems()
-        {
-            MessageBox.Show("Нет реализации загрузки элементов");
-        }
+        #endregion
 
+        #region Commands
+
+        #region OpenItem
+        
         private RelayCommand _openItemCommand;
-
+        /// <summary>
+        /// команда открытия карточки выбранного элемента
+        /// TODO: добавить проверку на множественный выбор, в этом случае ничего не делать
+        /// </summary>
         public RelayCommand OpenItemCommand =>
             _openItemCommand ?? (_openItemCommand = new RelayCommand(obj => OpenItem(SelectedItem)));
+        /// <summary>
+        /// открытие карточки выбранного элемента
+        /// </summary>
+        /// <param name="item">VM элемента</param>
+        public virtual void OpenItem(EVM item)
+        {
+            SelectItem(item); //чтобы при закрытии карточки выбор находмлся на изменённом элементе 
+        }
+        #endregion
 
-        public int ItemIdForGroup1 { get; set; }
-        public int ItemIdForGroup2 { get; set; }
-        
+        #region DeleteSelectedItem
 
         private RelayCommand _deleteSelectedItemCommand;
 
         public RelayCommand DeleteSelectedItemCommand =>
             _deleteSelectedItemCommand ?? (_deleteSelectedItemCommand =
                 new RelayCommand(obj => DeleteItem(SelectedItem), o => SelectedItem != null));
-
-        private RelayCommand _updateCommand;
-        public RelayCommand UpdateCommand => _updateCommand ?? (_updateCommand = new RelayCommand(obj => LoadItems()));
-        
-        public override bool CanSave
-        {
-            get { return Items.FirstOrDefault(i => i.CanSave) != null; }
-        }
-
-        private RelayCommand _saveCommand;
-
-        public RelayCommand SaveCommand =>
-            _saveCommand ?? (_saveCommand = new RelayCommand(obj => SaveItems(), a => CanSave));
-
-        public virtual void SaveItems()
-        {
-            Items.Where(i => i.CanSave).ToList().ForEach(a => a.SaveItem());
-            LoadItems();
-        }
-
-        public virtual void OpenItem(EVM item)
-        {
-            SelectItem(item);
-        }
-
         public virtual void DeleteItem(EVM selectedItem)
         {
             selectedItem.DeleteItemCommand.Execute(null);
             LoadItems();
         }
+        #endregion
 
+        #region Update
 
-        public virtual void CreateItem(EVM item)
+        private RelayCommand _updateCommand;
+        /// <summary>
+        /// команда загрузки списка из хранилища
+        /// TODO: сделать сохранение выбранного элемента после обновления списка
+        /// </summary>
+        public RelayCommand UpdateCommand => _updateCommand ?? (_updateCommand = new RelayCommand(obj => LoadItems()));
+        /// <summary>
+        /// Подгрузка элементов в список
+        /// </summary>
+        public virtual void LoadItems()
         {
-            Items.Add(item);
-            OpenItem(Items.Last());
+            MessageBox.Show("Нет реализации загрузки элементов");
         }
-
-        private RelayCommand _createItemCommand;
-
-        public RelayCommand CreateItemCommand => _createItemCommand ?? (_createItemCommand =
-            new RelayCommand(obj => CreateItem(
-                    new EVM()
-                    {
-                        ItemId = Items.Max(p => p.ItemId) + 1,
-                        Status = SaveStatuses.New
-                    }
-                )
-            ));
-        private RelayCommand _groupItems;
-        public RelayCommand GroupItemsCommand => _groupItems ?? 
-                                                 (_groupItems = new RelayCommand(obj => GroupItems()));
+        
+        #endregion
 
 
+        #region Save
+        
+        private RelayCommand _saveCommand;
+        /// <summary>
+        /// команда сохранения всех изменённых элементов списка
+        /// </summary>
+        public RelayCommand SaveCommand =>
+            _saveCommand ?? (_saveCommand = new RelayCommand(obj => SaveItems(), a => CanSave));
+        /// <summary>
+        /// сохранение всех изменённых элементов списка
+        /// </summary>
+        public virtual void SaveItems()
+        {
+            Items.Where(i => i.CanSave).ToList().ForEach(a => a.SaveItem());
+            LoadItems();
+        }
+        
+        #endregion
+        
+        #region GroupItems
+        
+        private RelayCommand _groupItemsCommand;
+        /// <summary>
+        /// Команда объединения записей (спицифичный механизм, возможно ему не место здесь :))
+        /// </summary>
+        public RelayCommand GroupItemsCommand => _groupItemsCommand ?? 
+                                                 (_groupItemsCommand = new RelayCommand(obj => GroupItems()));
+
+        public int ItemIdForGroup1 { get; set; }
+        public int ItemIdForGroup2 { get; set; }
+        /// <summary>
+        /// Метод объединяющий ItemIdForGroup1 и ItemIdForGroup2
+        /// </summary>
         public virtual void GroupItems()
         {
             try
@@ -170,5 +239,36 @@ namespace BaseObjectsMVVM
                 MessageBox.Show("err " + e.Message);
             }
         }
+        
+        #endregion
+        
+        #region CreateItem
+
+        private RelayCommand _createItemCommand;
+        /// <summary>
+        /// Команда создания объекта списка
+        /// </summary>
+        public RelayCommand CreateItemCommand => _createItemCommand ?? (_createItemCommand =
+            new RelayCommand(obj => CreateItem(
+                    new EVM()
+                    {
+                        ItemId = Items.Max(p => p.ItemId) + 1,
+                        Status = SaveStatuses.New
+                    }
+                )
+            ));
+        /// <summary>
+        /// Создание объекта списка
+        /// </summary>
+        /// <param name="item"></param>
+        public virtual void CreateItem(EVM item)
+        {
+            Items.Add(item);
+            OpenItem(Items.Last());
+        }
+
+        #endregion
+        
+        #endregion
     }
 }
