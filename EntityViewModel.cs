@@ -11,15 +11,19 @@ namespace BaseObjectsMVVM
     /// </summary>
     /// <typeparam name="EM">Model</typeparam>
     /// <typeparam name="TSql">ModelSql</typeparam>
-    public abstract class  EntityViewModel<EM, TSql> : BaseViewModel 
-        where TSql:ModelSql<EM>, new() 
+    public abstract class EntityViewModel<EM, TSql> : BaseViewModel
+        where TSql : ModelSql<EM>, new()
         where EM : EntityModel, new()
     {
         #region Constructors
+
         /// <summary>
         /// Конструктор без аргументов (иначе ошибка CS0310)
         /// </summary>
-        public EntityViewModel(){}
+        public EntityViewModel()
+        {
+        }
+
         /// <summary>
         /// конструктор создания VM "из данных"
         /// </summary>
@@ -28,6 +32,7 @@ namespace BaseObjectsMVVM
             Item = new EM();
             ParseArguments(row);
         }
+
         /// <summary>
         /// конструктор для создания vm по id и с присвоением статуса
         /// </summary>
@@ -42,7 +47,7 @@ namespace BaseObjectsMVVM
                 var adapter = TSql.LoadItem((int)itemId);
                 DataTable data = new DataTable();
                 adapter.Fill(data);
-                
+
                 if (data.Rows.Count > 0)
                 {
                     ParseArguments(data.Rows[0]);
@@ -63,39 +68,55 @@ namespace BaseObjectsMVVM
                     break;
             }
         }
+
         #endregion
-        
-        public EM Item {
+
+        #region Atributes
+
+        /// <summary>
+        /// Модель сущности
+        /// </summary>
+        public EM Item
+        {
             get => _item;
             set
             {
                 _item = value;
-                OnPropertyChanged(()=>Item);
+                OnPropertyChanged(() => Item);
             }
         }
+
         private EM _item;
 
+        /// <summary>
+        ///  id сущности
+        /// </summary>
+        public virtual int? ItemId
+        {
+            get => Item.ItemId;
+            set => Item.ItemId = value;
+        }
+
+        #endregion
+
+        #region Commands
+
+        #region SaveItem
+
         private RelayCommand _saveItemCommand;
-        public RelayCommand SaveItemCommand => _saveItemCommand ?? (_saveItemCommand = new RelayCommand( obj => SaveItem(), _=>CanSave));
 
-        private RelayCommand _deleteItemCommand;
-        public RelayCommand DeleteItemCommand => _deleteItemCommand ?? (_deleteItemCommand = new RelayCommand( obj => DeleteItem()));
-        
-        private RelayCommand _updateItemCommand;
-        public RelayCommand UpdateItemCommand => _updateItemCommand ?? (_updateItemCommand = new RelayCommand( obj => UpdateItem()));
+        /// <summary>
+        /// Команда сохранения объекта
+        /// </summary>
+        public RelayCommand SaveItemCommand =>
+            _saveItemCommand ?? (_saveItemCommand = new RelayCommand(obj => SaveItem(), _ => CanSave));
 
-        
-        public override void MarkAsChanged()
-        {
-            base.MarkAsChanged();
-            OnPropertyChanged(()=>SaveItemCommand);
-        }
-        public override void MarkAsUnchanged()
-        {
-            base.MarkAsUnchanged();
-            OnPropertyChanged(()=>SaveItemCommand);
-        }
-
+        /// <summary>
+        /// сохранениу объекта
+        /// </summary>
+        /// <returns>
+        /// TODO: Результат сохранения
+        /// </returns>
         public virtual int? SaveItem()
         {
             var a = new TSql();
@@ -113,26 +134,97 @@ namespace BaseObjectsMVVM
             return null;
         }
 
+        #endregion
+
+        #region DeleteItem
+
+        private RelayCommand _deleteItemCommand;
+
+        /// <summary>
+        /// Команда удаления объекта
+        /// </summary>
+        public RelayCommand DeleteItemCommand =>
+            _deleteItemCommand ?? (_deleteItemCommand = new RelayCommand(obj => DeleteItem()));
+
+        /// <summary>
+        /// Удаление объекта
+        /// </summary>
         public virtual void DeleteItem()
         {
             var a = new TSql();
             a.Delete(Item);
         }
-        
+
+        #endregion
+
+        #region UpdateItem
+
+        private RelayCommand _updateItemCommand;
+
+        /// <summary>
+        /// Команда записи изменений объекта
+        /// </summary>
+        public RelayCommand UpdateItemCommand =>
+            _updateItemCommand ?? (_updateItemCommand = new RelayCommand(obj => UpdateItem()));
+
+        /// <summary>
+        /// Запись изменений объекта
+        /// </summary>
         public virtual void UpdateItem()
         {
             var a = new TSql();
-            a.LoadItem((int) Item.ItemId);
+            a.LoadItem((int)Item.ItemId);
         }
-        
 
+        #endregion
+
+        #endregion
+
+        #region Methods
+
+        /// <summary>
+        /// Обозначить как изменённый
+        /// </summary>
+        public override void MarkAsChanged()
+        {
+            base.MarkAsChanged();
+            OnPropertyChanged(() => SaveItemCommand);
+        }
+
+        /// <summary>
+        /// Обозначить как не изменённый
+        /// </summary>
+        public override void MarkAsUnchanged()
+        {
+            base.MarkAsUnchanged();
+            OnPropertyChanged(() => SaveItemCommand);
+        }
+
+        /// <summary>
+        /// подгрузить информацию об объекте
+        /// </summary>
+        /// <param name="itemId"></param>
         public virtual void LoadItem(int itemId)
         {
             MessageBox.Show("Загрузка объекта - нет реализации.");
         }
 
+        /// <summary>
+        /// метод парсинга данных по полям модели, полученных из базы.
+        /// </summary>
+        /// <param name="row">строка из базы</param>
         public abstract void ParseArguments(DataRow row);
-        public virtual void SetPropertyValue<TPropertyType>(Expression<Func<TPropertyType>> propertyExpr, TPropertyType val, ref TPropertyType prop)
+
+        /// <summary>
+        /// Метод для изменения полей объекта.
+        /// По сути делает следующее: "При изменениии поля, помечать объект как изменённый"
+        /// </summary>
+        /// <param name="propertyExpr"></param>
+        /// <param name="val"></param>
+        /// <param name="prop"></param>
+        /// <typeparam name="TPropertyType"></typeparam>
+        public virtual void SetPropertyValue<TPropertyType>(Expression<Func<TPropertyType>> propertyExpr,
+            TPropertyType val, ref TPropertyType prop)
         {
             if (!Equals(val, prop))
             {
@@ -143,10 +235,6 @@ namespace BaseObjectsMVVM
             base.OnPropertyChanged(propertyExpr);
         }
 
-        public virtual int? ItemId
-        {
-            get => Item.ItemId;
-            set => Item.ItemId = value;
-        }
+        #endregion
     }
 }
