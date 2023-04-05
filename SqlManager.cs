@@ -17,9 +17,10 @@ namespace BaseObjectsMVVM
                 Connection = new SQLiteConnection(ConnectionString);
                 Connection.Open();
                 Connection.Close();
-            } catch (Exception e)
+            }
+            catch (Exception e)
             {
-                MessageBox.Show("err: "+e.Message);
+                MessageBox.Show("err: " + e.Message);
             }
         }
 
@@ -32,6 +33,7 @@ namespace BaseObjectsMVVM
                 {
                     return reader;
                 }
+
                 return null;
             }
         }
