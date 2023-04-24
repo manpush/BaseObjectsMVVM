@@ -78,7 +78,7 @@ namespace BaseObjectsMVVM
         /// </summary>
         public EM Item
         {
-            get => _item;
+            get => _item ?? (_item = new EM());
             set
             {
                 _item = value;
